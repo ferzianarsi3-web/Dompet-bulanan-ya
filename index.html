@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dompet Bulanan</title>
+<style>
+:root{--bg:#f4f6fa;--ink:#182230;--muted:#687386;--blue:#2457d6;--green:#16865b;--red:#c43d4b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui, sans-serif}
+header{background:#fff;padding:22px 18px 18px;border-bottom:1px solid #e6eaf0}
+h1{font-size:23px;margin:0 0 4px}header p{margin:0;color:var(--muted);font-size:13px}
+main{padding:16px;max-width:680px;margin:auto}.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card,.panel{background:#fff;border:1px solid #e7ebf1;border-radius:16px;padding:15px;margin-bottom:12px}
+.card small{color:var(--muted)}.amount{font-size:20px;font-weight:700;margin-top:7px}
+.income{color:var(--green)}.expense{color:var(--red)}
+h2{font-size:17px;margin:0 0 12px}
+input,select,button{width:100%;padding:12px;border:1px solid #d9e0ea;border-radius:10px;font:inherit;margin:5px 0;background:#fff}
+button{background:var(--blue);color:#fff;border:0;font-weight:650}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.item{padding:10px 0;border-bottom:1px solid #edf0f4;display:flex;justify-content:space-between;gap:12px}
+.item:last-child{border:0}.item small{display:block;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<header><h1>Dompet Bulanan</h1><p>Catat pemasukan dan pengeluaran dengan mudah</p></header>
+<main>
+<section class="cards">
+<div class="card"><small>Saldo bulan ini</small><div class="amount" id="balance">Rp0</div></div>
+<div class="card"><small>Pemasukan</small><div class="amount income" id="income">Rp0</div></div>
+<div class="card"><small>Pengeluaran</small><div class="amount expense" id="expense">Rp0</div></div>
+<div class="card"><small>Jumlah transaksi</small><div class="amount" id="count">0</div></div>
+</section>
+<section class="panel">
+<h2>Tambah transaksi</h2>
+<select id="type"><option value="in">Pemasukan</option><option value="out">Pengeluaran</option></select>
+<input id="desc" placeholder="Keterangan transaksi">
+<div class="row"><input id="amount" type="number" min="1" placeholder="Jumlah (Rp)"><input id="date" type="date"></div>
+<select id="category"><option>Gaji</option><option>Makanan</option><option>Transportasi</option><option>Belanja</option><option>Tagihan</option><option>Tabungan</option><option>Lainnya</option></select>
+<button onclick="add()">Simpan transaksi</button>
+</section>
+<section class="panel"><h2>Riwayat transaksi</h2><div id="list" class="empty">Belum ada transaksi.</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let data=JSON.parse(localStorage.getItem('db_transactions')||'[]');
+$('date').value=new Date().toISOString().slice(0,10);
+const rupiah=n=>'Rp'+Number(n).toLocaleString('id-ID');
+function save(){localStorage.setItem('db_transactions',JSON.stringify(data));render()}
+function add(){
+ const desc=$('desc').value.trim(), amount=Number($('amount').value);
+ if(!desc||!amount||amount<1){alert('Isi keterangan dan jumlah yang benar.');return}
+ data.unshift({id:Date.now(),type:$('type').value,desc,amount,date:$('date').value,category:$('category').value});
+ $('desc').value='';$('amount').value='';save();
+}
+function del(id){if(confirm('Hapus transaksi ini?')){data=data.filter(x=>x.id!==id);save()}}
+function render(){
+ const month=new Date().toISOString().slice(0,7), rows=data.filter(x=>(x.date||'').startsWith(month));
+ const inc=rows.filter(x=>x.type==='in').reduce((s,x)=>s+x.amount,0),out=rows.filter(x=>x.type==='out').reduce((s,x)=>s+x.amount,0);
+ $('balance').textContent=rupiah(inc-out);$('income').textContent=rupiah(inc);$('expense').textContent=rupiah(out);$('count').textContent=rows.length;
+ $('list').className=rows.length?'':'empty';
+ $('list').innerHTML=rows.length?rows.map(x=>`<div class="item"><div><b>${esc(x.desc)}</b><small>${esc(x.category)} · ${esc(x.date)}</small><small onclick="del(${x.id})" style="color:#c43d4b">Hapus</small></div><b class="${x.type==='in'?'income':'expense'}">${x.type==='in'?'+':'−'}${rupiah(x.amount)}</b></div>`).join(''):'Belum ada transaksi bulan ini.';
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+render();
+</script>
+</body>
+</html>
